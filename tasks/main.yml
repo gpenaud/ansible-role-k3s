@@ -1,0 +1,29 @@
+---
+# tasks file for gpenaud.k3s
+
+- name: "Main - Import utils binaries task-set"
+  ansible.builtin.import_tasks: utils.yml
+  when: install_utils | bool
+  tags:
+    - k3s-utils
+
+- name: "Main - Purge actual k3s cluster"
+  ansible.builtin.import_tasks: purge.yml
+  when: purge_cluster | bool
+  tags:
+    - k3s-purge
+
+- name: "Main - Import k3s cluster task-set"
+  ansible.builtin.import_tasks: cluster.yml
+  tags:
+    - k3s-cluster
+
+- name: "Main - Import k3s operator task-set"
+  ansible.builtin.import_tasks: operator.yml
+  tags:
+    - k3s-operator
+
+- name: "Main - Import tls task-set"
+  ansible.builtin.import_tasks: tls.yml
+  tags:
+    - k3s-tls
