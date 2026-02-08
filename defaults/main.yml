@@ -1,0 +1,7 @@
+---
+# defaults file for gpenaud.k3s
+
+k3s_user: "{{ lookup('env', 'USER') }}"
+k3s_user_path: "/home/{{ k3s_user }}"
+k3s_installation_path: "{{ k3s_user_path }}/.k3s"
+k3s_dockerconfig: "{{ k3s_user_path }}/.docker/config.json"
