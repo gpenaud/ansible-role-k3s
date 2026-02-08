@@ -1,0 +1,123 @@
+---
+# tasks file for gpenaud.k3s
+
+- name: "Cluster - Install python kubernetes library"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: "{{ package }}"
+  loop:
+    - python3-kubernetes
+  loop_control:
+    loop_var: package
+
+- name: "Cluster - Create k3s directory"
+  become: true
+  ansible.builtin.file:
+    state: directory
+    dest: "{{ k3s_installation_path }}"
+    owner: "{{ k3s_user }}"
+    group: "{{ k3s_user }}"
+
+- name: "Cluster - Add k3s configuration files for control-plane node"
+  ansible.builtin.template:
+    src: "templates/{{ file }}.j2"
+    dest: "{{ k3s_installation_path }}/{{ file }}"
+    owner: "{{ k3s_user }}"
+    group: "{{ k3s_user }}"
+  loop:
+    - k3s-config.yml
+  loop_control:
+    loop_var: file
+
+- name: "Cluster - Install k3s server"
+  shell: |
+    curl -sfL https://get.k3s.io | sh -s - server --config "{{ k3s_installation_path }}/k3s-config.yml"
+
+- name: "Cluster - Retrieve kubeconfig from remote"
+  become: true
+  copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "{{ k3s_installation_path }}/config"
+    remote_src: true
+    owner: "{{ k3s_user }}"
+    group: "{{ k3s_user }}"
+
+- name: "Cluster - Slurp dockerconfigjson file"
+  slurp:
+    src: "{{ k3s_dockerconfig }}"
+  register: dockerconfig
+
+- name: "Cluster - Create dockerconfigjson secret"
+  kubernetes.core.k8s:
+    state: present
+    force: true
+    kubeconfig: "{{ k3s_installation_path }}/config"
+    definition:
+      kind: Secret
+      apiVersion: v1
+      metadata:
+        name: regcred
+        namespace: default
+      type: kubernetes.io/dockerconfigjson
+      append_hash: true
+      data:
+        .dockerconfigjson: "{{ dockerconfig['content'] }}"
+
+- name: "Cluster - Replace defaults by local in kubeconfigs"
+  ansible.builtin.replace:
+    path: "{{ k3s_installation_path }}/config"
+    regexp: 'default'
+    replace: 'local'
+
+- name: "Cluster - Add https://traefik.github.io/charts repo"
+  kubernetes.core.helm_repository:
+    name: stable
+    repo_url: "https://traefik.github.io/charts"
+  tags:
+    - traefik
+
+- name: "Cluster - Deploy traefik helm chart"
+  kubernetes.core.helm:
+    name: traefik
+    chart_ref: stable/traefik
+    release_namespace: kube-system
+    kubeconfig: "{{ k3s_installation_path }}/config"
+    context: local
+  tags:
+    - traefik
+
+- name: "Cluster - Add https://bitnami-labs.github.io/sealed-secrets repo"
+  kubernetes.core.helm_repository:
+    name: sealed-secrets
+    repo_url: "https://bitnami-labs.github.io/sealed-secrets"
+  tags:
+    - sealed-secrets
+
+- name: "Cluster - Copy local sealed-secrets key in k3s home path"
+  copy:
+    src: local.sealed-secrets.key
+    dest: "{{ k3s_installation_path }}/local.sealed-secrets.key"
+  tags:
+    - sealed-secrets
+
+- name: "Cluster - Add local sealed-secrets key as secret"
+  kubernetes.core.k8s:
+    state: present
+    force: true
+    kubeconfig: "{{ k3s_installation_path }}/config"
+    src: "{{ k3s_installation_path }}/local.sealed-secrets.key"
+  tags:
+    - sealed-secrets
+
+- name: "Cluster - Deploy sealed-secrets helm chart"
+  kubernetes.core.helm:
+    name: sealed-secrets
+    chart_ref: sealed-secrets/sealed-secrets
+    release_namespace: kube-system
+    kubeconfig: "{{ k3s_installation_path }}/config"
+    context: local
+    values:
+      fullnameOverride: sealed-secrets-controller
+  tags:
+    - sealed-secrets
