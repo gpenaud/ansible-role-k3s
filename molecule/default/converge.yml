@@ -1,0 +1,13 @@
+---
+- name: Converge
+  hosts: localhost
+  gather_facts: false
+  vars_prompt:
+   - name: "install_utils"
+     prompt: "Install k3s clients (kubectl, helm, mkcert...): yes/no"
+     default: false
+
+  tasks:
+    - name: Include gpenaud.k3s role
+      include_role:
+        name: gpenaud.k3s

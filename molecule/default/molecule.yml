@@ -1,0 +1,11 @@
+
+scenario:
+  name: default
+
+driver:
+  name: docker
+
+platforms:
+  - name: ansible-gpenaud-k3s-ubuntu-24.04
+    image: ubuntu:24.04
+    pre_build_image: true
