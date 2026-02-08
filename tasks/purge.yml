@@ -1,0 +1,12 @@
+
+- name: "Purge - Check if k3s-uninstall.sh script is present on system"
+  become: true
+  stat:
+    path: /usr/local/bin/k3s-uninstall.sh
+  register: k3s_is_installed
+
+- name: "Purge - Remove current k3s cluster through k3s-uninstall.sh script"
+  become: true
+  shell: |-
+    /usr/local/bin/k3s-uninstall.sh
+  when: k3s_is_installed.stat.exists
