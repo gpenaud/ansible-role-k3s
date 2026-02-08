@@ -1,0 +1,15 @@
+galaxy_info:
+  role_name: k3s
+  namespace: gpenaud
+
+  author: Guillaume Penaud
+  description: install k3s cluster, configure local TLS witth mkcert, and some tools for develoeprs
+  company: gpenaud
+  license: license (GPL-2.0-or-later, MIT, etc)
+  min_ansible_version: 2.1
+
+  galaxy_tags: []
+dependencies: []
+
+# IMPROVMENT: use asdf and direnv to improve installation way 
+# https://blog.stephane-robert.info/post/devops-asdf-direnv/
