@@ -1,0 +1,79 @@
+
+
+- name: "Tls - Create mkcert user"
+  ansible.builtin.user:
+    name: mkcert
+    password: "{{ 'mkcert' | password_hash('sha512', 'camembert') }}"
+    shell: /bin/bash
+    group: sudo
+
+- name: "Tls - Install mkcert"
+  become: true
+  become_user: mkcert
+  ansible.builtin.shell:
+    cmd: |-
+      echo mkcert | sudo -S mkcert -install
+
+- name: "Tls - Create mkcert wildcards"
+  become: true
+  become_user: "{{ k3s_user }}"
+  ansible.builtin.shell:
+    cmd: |-
+      mkcert \
+        -cert-file {{ k3s_installation_path }}/_wildcard.gpenaud.localhost.pem \
+        -key-file {{ k3s_installation_path }}/_wildcard.gpenaud.localhost-key.pem \
+      "*.gpenaud.localhost"
+
+- name: "Tls - Slurp wildcard certificate"
+  ansible.builtin.slurp:
+    src: "{{ k3s_installation_path }}/_wildcard.gpenaud.localhost.pem"
+  register: wildcard_cert
+
+- name: "Tls - Slurp wildcard key"
+  ansible.builtin.slurp:
+    src: "{{ k3s_installation_path }}/_wildcard.gpenaud.localhost-key.pem"
+  register: wildcard_key
+
+- name: "Tls - Define wildcard secret"
+  kubernetes.core.k8s:
+    state: present
+    force: true
+    kubeconfig: "{{ k3s_installation_path }}/config"
+    definition: 
+      apiVersion: v1
+      metadata:
+        name: wildcard-tls-cert
+        namespace: default
+      kind: Secret
+      type: kubernetes.io/tls
+      data:
+        tls.crt: "{{ wildcard_cert['content'] }}"
+        tls.key: "{{ wildcard_key['content'] }}"
+
+- name: "Tls - Display mkcert CA file path"
+  become: true
+  become_user: "{{ k3s_user }}"
+  ansible.builtin.shell: mkcert -CAROOT
+  register: caroot_file
+
+- name: "Tls - Slurp ca-crt file"
+  become: true
+  become_user: "{{ k3s_user }}"
+  ansible.builtin.slurp:
+    src: "{{ caroot_file.stdout }}/rootCA.pem"
+  register: ca_crt
+
+- name: "Tls - Define CA cert as secret"
+  kubernetes.core.k8s:
+    state: present
+    force: true
+    kubeconfig: "{{ k3s_installation_path }}/config"
+    definition:
+      kind: Secret
+      apiVersion: v1
+      metadata:
+        name: ca-tls-cert
+        namespace: default
+      type: Opaque
+      data:
+        ca.crt: "{{ ca_crt['content'] }}"
