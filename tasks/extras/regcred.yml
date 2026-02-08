@@ -1,0 +1,21 @@
+---
+- name: "Cluster - Slurp dockerconfigjson file"
+  ansible.builtin.slurp:
+    src: "{{ k3s_dockerconfig }}"
+  register: dockerconfig
+
+- name: "Cluster - Create dockerconfigjson secret"
+  kubernetes.core.k8s:
+    state: present
+    force: true
+    kubeconfig: "{{ k3s_installation_path }}/config"
+    definition:
+      kind: Secret
+      apiVersion: v1
+      metadata:
+        name: regcred
+        namespace: kube-system
+      type: kubernetes.io/dockerconfigjson
+      append_hash: true
+      data:
+        .dockerconfigjson: "{{ dockerconfig['content'] }}"
