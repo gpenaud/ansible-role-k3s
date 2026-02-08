@@ -18,12 +18,29 @@
   tags:
     - k3s-cluster
 
-- name: "Main - Import k3s operator task-set"
-  ansible.builtin.import_tasks: operator.yml
+- name: "Main - Import k3s regcred task-set"
+  ansible.builtin.import_tasks: extras/regcred.yml
   tags:
-    - k3s-operator
+    - k3s-regcred
 
-- name: "Main - Import tls task-set"
-  ansible.builtin.import_tasks: tls.yml
+- name: "Main - Import k3s certificates task-set"
+  ansible.builtin.import_tasks: extras/certificates.yml
   tags:
-    - k3s-tls
+    - k3s-certificates
+
+- name: "Main - Import k3s traefik task-set"
+  ansible.builtin.import_tasks: extras/traefik.yml
+  tags:
+    - k3s-traefik
+
+- name: "Main - Import k3s sealed-secrets task-set"
+  ansible.builtin.import_tasks: extras/secrets/sealed-secrets.yml
+  tags:
+    - k3s-secrets
+    - k3s-sealed-secrets
+
+- name: "Main - Import k3s external-secrets task-set"
+  ansible.builtin.import_tasks: extras/secrets/external-secrets.yml
+  tags:
+    - k3s-secrets
+    - k3s-external-secrets
