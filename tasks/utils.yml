@@ -1,0 +1,46 @@
+
+- name: "Utils - become sudo user for those operations"
+  become: true
+  block:
+  - name: "Utils - Install some requirements for mkcert"
+    ansible.builtin.package:
+      state: present
+      name: "{{ package }}"
+    loop:
+      - libnss3-tools
+    loop_control:
+      loop_var: package
+
+  - name: "Utils - Download and install mkcert"
+    ansible.builtin.shell: |-
+      curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+      chmod +x mkcert-v*-linux-amd64
+      cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+      rm -f mkcert*
+
+  - name: "Utils - Download and install helm"
+    ansible.builtin.shell: |-
+      curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+      chmod 700 get_helm.sh
+      bash get_helm.sh
+      rm -f get_helm.sh
+
+  - name: "Utils - Download and install kubectl"
+    ansible.builtin.shell: |-
+      curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      chmod +x kubectl
+      mv kubectl /usr/local/bin/kubectl
+
+  - name: "Utils - Download and install devspace"
+    ansible.builtin.shell: |-
+      curl -L -o devspace "https://github.com/loft-sh/devspace/releases/latest/download/devspace-linux-amd64"
+      install -c -m 0755 devspace /usr/local/bin
+      rm -f devspace
+
+  - name: "Utils - Download and install kubeseal"
+    ansible.builtin.shell: |-
+      curl -OL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION:?}/kubeseal-${KUBESEAL_VERSION:?}-linux-amd64.tar.gz"
+      tar -xvzf kubeseal-${KUBESEAL_VERSION:?}-linux-amd64.tar.gz kubeseal
+      sudo install -m 755 kubeseal /usr/local/bin/kubeseal
+    environment:
+        KUBESEAL_VERSION: 0.23.0
