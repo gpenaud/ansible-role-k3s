@@ -47,14 +47,21 @@
   ansible.builtin.shell: mkcert -CAROOT
   register: caroot_file
 
-- name: "Certificates - Slurp ca-crt file"
+- name: "Certificates - Slurp mkcert ca-crt file"
   become: true
   become_user: "{{ k3s_user }}"
   ansible.builtin.slurp:
     src: "{{ caroot_file.stdout }}/rootCA.pem"
   register: ca_crt
 
-- name: "Certificates - Define CA cert as secret"
+- name: "Certificates - Slurp mkcert ca-key file"
+  become: true
+  become_user: "{{ k3s_user }}"
+  ansible.builtin.slurp:
+    src: "{{ caroot_file.stdout }}/rootCA-key.pem"
+  register: ca_key
+
+- name: "Certificates - Define CA cert and key as secret"
   kubernetes.core.k8s:
     state: present
     force: true
@@ -63,8 +70,36 @@
       kind: Secret
       apiVersion: v1
       metadata:
-        name: mkcert-ca-cert
-        namespace: default
+        name: mkcert-ca
+        namespace: kube-system
       type: Opaque
       data:
-        ca.crt: "{{ ca_crt['content'] }}"
+        tls.crt: "{{ ca_crt['content'] }}"
+        tls.key: "{{ ca_key['content'] }}"
+
+- name: "Certificates - Deploy cert-manager helm chart"
+  kubernetes.core.helm:
+    name: cert-manager
+    chart_ref: oci://quay.io/jetstack/charts/cert-manager
+    chart_version: v1.19.2
+    release_namespace: kube-system
+    kubeconfig: "{{ k3s_installation_path }}/config"
+    context: local
+    wait: true
+    values:
+      crds:
+        enabled: true
+
+- name: "Certificates - Create mkcert ClusterIssuer"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k3s_installation_path }}/config"
+    definition: 
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: mkcert
+        namespace: kube-system
+      spec:
+        ca:
+          secretName: mkcert-ca
