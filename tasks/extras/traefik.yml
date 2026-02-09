@@ -1,12 +1,12 @@
 ---
-- name: "Cluster - Add https://traefik.github.io/charts repo"
+- name: "Traefik - Add https://traefik.github.io/charts repo"
   kubernetes.core.helm_repository:
     name: stable
     repo_url: "https://traefik.github.io/charts"
   tags:
     - k3s-traefik
 
-- name: "Cluster - Deploy traefik helm chart"
+- name: "Traefik - Deploy traefik helm chart"
   kubernetes.core.helm:
     name: traefik
     chart_ref: stable/traefik
