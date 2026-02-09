@@ -1,6 +1,12 @@
 ---
 # tasks file for gpenaud.k3s
 
+- name: "Main - Set become password from env variable"
+  set_fact:
+    ansible_become_pass: "{{ lookup('env', set_become_pass_from_env) }}"
+  tags:
+    - always
+
 - name: "Main - Import utils binaries task-set"
   ansible.builtin.import_tasks: utils.yml
   when: install_utils | bool
@@ -18,29 +24,33 @@
   tags:
     - k3s-cluster
 
-- name: "Main - Import k3s regcred task-set"
-  ansible.builtin.import_tasks: extras/regcred.yml
-  tags:
-    - k3s-regcred
+- block:
+  - name: "Main - Import k3s regcred task-set"
+    ansible.builtin.import_tasks: extras/regcred.yml
+    tags:
+      - k3s-regcred
 
-- name: "Main - Import k3s certificates task-set"
-  ansible.builtin.import_tasks: extras/certificates.yml
-  tags:
-    - k3s-certificates
+  - name: "Main - Import k3s certificates task-set"
+    ansible.builtin.import_tasks: extras/certificates.yml
+    tags:
+      - k3s-certificates
 
-- name: "Main - Import k3s traefik task-set"
-  ansible.builtin.import_tasks: extras/traefik.yml
-  tags:
-    - k3s-traefik
+  - name: "Main - Import k3s traefik task-set"
+    ansible.builtin.import_tasks: extras/traefik.yml
+    tags:
+      - k3s-traefik
 
-- name: "Main - Import k3s sealed-secrets task-set"
-  ansible.builtin.import_tasks: extras/secrets/sealed-secrets.yml
-  tags:
-    - k3s-secrets
-    - k3s-sealed-secrets
+  - name: "Main - Import k3s sealed-secrets task-set"
+    ansible.builtin.import_tasks: extras/secrets/sealed-secrets.yml
+    tags:
+      - k3s-secrets
+      - k3s-sealed-secrets
 
-- name: "Main - Import k3s external-secrets task-set"
-  ansible.builtin.import_tasks: extras/secrets/external-secrets.yml
-  tags:
-    - k3s-secrets
-    - k3s-external-secrets
+  - name: "Main - Import k3s external-secrets task-set"
+    ansible.builtin.import_tasks: extras/secrets/external-secrets.yml
+    tags:
+      - k3s-secrets
+      - k3s-external-secrets
+  when: with_extras | default(false) | bool 
+  
+    
